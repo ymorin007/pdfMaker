@@ -40,13 +40,21 @@ Find me at : Google+, Github or at the beach.
 		<cfargument name="orientation" type="string" required="false" default="portrait"
 					hint="Page orientation: portrait | landscape">
 
+		<cfargument name="footer" type="string" required="false" default=""
+					hint="Text to add to the footer">
+
+		<cfargument name="header" type="string" required="false" default=""
+					hint="Text to add to the header">
+
 		<cfset var loc = {}>
 		
 		<cfset loc.thisPath = ExpandPath("*.*")>
 		<cfset loc.thisDirectory = GetDirectoryFromPath(loc.thisPath)>
 		<cfset loc.filename = "browser">
 		<cfset loc.document = "">
-
+		<cfset docheader = arguments.header>
+		<cfset docfooter = arguments.footer>
+		
 		<cfset loc.pathToFilename = loc.thisDirectory & application.wheels.filePath>
 		
 		<cfif StructKeyExists(arguments, "filename")>
@@ -55,37 +63,64 @@ Find me at : Google+, Github or at the beach.
 		
 		<!--- Get the document to print to pdf --->
 		<cfif arguments.doctype EQ "partial" AND arguments.partial NEQ "">
-			<cfset loc.document = includePartial("#arguments.partial#")>
+			<cfif arguments.sendToFile EQ "true">
+				<cfdocument format="pdf" filename="#loc.pathToFilename#/#loc.filename#.pdf" overwrite="#arguments.overwrite#" orientation="#arguments.orientation#">
+					<cfoutput>
+						<cfdocumentitem type="header">#docheader#</cfdocumentitem>
+						<cfset c=0>
+						<cfloop list="#arguments.partial#" index="i">
+							<cfset c=c+1>
+							<cfoutput>#includePartial("#i#")#</cfoutput>
+							<cfif listLen(arguments.partial) NEQ c>
+								<cfdocumentitem type="pagebreak"/>
+							</cfif>
+						</cfloop>
+						<cfdocumentitem type="footer">#docfooter#</cfdocumentitem> 						
+					</cfoutput>
+				</cfdocument>				
+			<cfelse><!--- Send to browser --->
+				<cfdocument format="pdf" orientation="#arguments.orientation#">
+					<cfoutput>
+					<cfdocumentitem type="header">#docheader#</cfdocumentitem>						
+					<cfset c=0>
+					<cfloop list="#arguments.partial#" index="i">
+						<cfset c=c+1>
+						<cfoutput>#includePartial("#i#")#</cfoutput>
+						<cfif listLen(arguments.partial) NEQ c>
+							<cfdocumentitem type="pagebreak"/>
+						</cfif>
+					</cfloop>
+					<cfdocumentitem type="footer">#docfooter#</cfdocumentitem>
+					</cfoutput>
+				</cfdocument>	
+			</cfif>	
 		<cfelseif arguments.doctype EQ "url">
-				<cfif arguments.url EQ "">
-					<cfhttp url="#GetCurrentURL()#" method="get" resolveURL="true">
-				<cfelse>	
-					<cfhttp url="#arguments.url#" method="get" resolveURL="true">
-				</cfif>
+			<cfif arguments.url EQ "">
+				<cfhttp url="#GetCurrentURL()#" method="get" resolveURL="true">
+			<cfelse>	
+				<cfhttp url="#arguments.url#" method="get" resolveURL="true">
+			</cfif>
 			<cfset loc.document = cfhttp.filecontent>
+			<cfif arguments.sendToFile EQ "true">
+				<cfdocument format="pdf" filename="#loc.pathToFilename#/#loc.filename#.pdf" overwrite="#arguments.overwrite#" orientation="#arguments.orientation#">
+					<cfoutput>#loc.document#</cfoutput>
+				</cfdocument>				
+			<cfelse><!--- Send to browser --->
+				<cfdocument format="pdf" orientation="#arguments.orientation#">
+					<cfoutput>#loc.document#</cfoutput>
+				</cfdocument>	
+			</cfif>				
 		<cfelseif arguments.doctype EQ "text" AND arguments.text NEQ "">
-			<cfset loc.document = arguments.text>
+			<cfif arguments.sendToFile EQ "true">
+				<cfdocument format="pdf" filename="#loc.pathToFilename#/#loc.filename#.pdf" overwrite="#arguments.overwrite#" orientation="#arguments.orientation#">
+					<cfoutput>#loc.document#</cfoutput>
+				</cfdocument>				
+			<cfelse><!--- Send to browser --->
+				<cfdocument format="pdf" orientation="#arguments.orientation#">
+					<cfoutput>#loc.document#</cfoutput>
+				</cfdocument>	
+			</cfif>	
 		</cfif>	
-		
-		<cfif arguments.sendToFile EQ "true">
-
-			<cfdocument format="pdf" filename="#loc.pathToFilename#/#loc.filename#.pdf" overwrite="#arguments.overwrite#" orientation="#arguments.orientation#">
-				<cfoutput>
-					#loc.document#
-				</cfoutput>
-			</cfdocument>				
-
-		<cfelse><!--- Send to browser --->
-
-			<cfdocument format="pdf" orientation="#arguments.orientation#">
-				<cfoutput>
-					#loc.document#
-				</cfoutput>
-			</cfdocument>	
-
-		</cfif>	
-		
-	
 	</cffunction>	
 	
 	<cffunction name="GetCurrentURL" output="No" access="private">
